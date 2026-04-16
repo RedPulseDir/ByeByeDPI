@@ -1,4 +1,4 @@
-name: Android CI
+name: Android Cal and Poop
 
 on:
   push:
@@ -24,9 +24,6 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install NDK
         run: |
           echo "y" | sdkmanager --install "ndk;26.1.10909125"
@@ -38,63 +35,9 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Build Release APK (unsigned)
-        run: ./gradlew assembleRelease
-
-      - name: Sign Release APK
-        if: github.event_name != 'pull_request' && secrets.SIGNING_KEY != ''
-        run: |
-          # Декодируем keystore из base64
-          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > /tmp/keystore.jks
-
-          # Находим все release APK
-          find app/build/outputs/apk/release -name "*.apk" ! -name "*signed*" | while read apk; do
-            signed="${apk%.apk}-signed.apk"
-            
-            $ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner sign \
-              --ks /tmp/keystore.jks \
-              --ks-key-alias "${{ secrets.ALIAS }}" \
-              --ks-pass pass:"${{ secrets.KEY_STORE_PASSWORD }}" \
-              --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
-              --out "$signed" \
-              "$apk"
-            
-            echo "Signed: $signed"
-          done
-
-          # Чистим keystore
-          rm -f /tmp/keystore.jks
-
-      - name: List APK files
-        run: |
-          echo "=== Release APKs ==="
-          find app/build/outputs/apk/release -name "*.apk" | sort
-          echo "=== Debug APKs ==="
-          find app/build/outputs/apk/debug -name "*.apk" | sort
-
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: byedpi-debug
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
-
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: byedpi-release
-          path: |
-            app/build/outputs/apk/release/*-signed.apk
-            app/build/outputs/apk/release/*-unsigned.apk
-          retention-days: 30
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            app/build/outputs/apk/release/*-signed.apk
-            app/build/outputs/apk/release/*-unsigned.apk
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
