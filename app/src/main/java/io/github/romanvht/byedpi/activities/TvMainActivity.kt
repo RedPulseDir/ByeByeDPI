@@ -38,7 +38,7 @@ class TvMainActivity : FragmentActivity() {
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            Log.d(TAG, "Broadcast received: ${intent?.action}")
+            Log.d(TAG, "Broadcast received: \${intent?.action}")
             when (intent?.action) {
                 STARTED_BROADCAST, STOPPED_BROADCAST, FAILED_BROADCAST -> updateUI()
             }
@@ -75,9 +75,7 @@ class TvMainActivity : FragmentActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
-        // Request focus on toggle button by default
         binding.toggleButton.requestFocus()
-
         updateUI()
     }
 
