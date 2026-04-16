@@ -33,13 +33,13 @@ android {
 
     buildTypes {
         release {
-            buildConfigField("String", "VERSION_NAME",  "\"${defaultConfig.versionName}\"")
+            buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             isMinifyEnabled = true
             isShrinkResources = true
         }
         debug {
-            buildConfigField("String", "VERSION_NAME",  "\"${defaultConfig.versionName}-debug\"")
+            buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}-debug\"")
         }
     }
 
@@ -88,6 +88,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-service:2.9.4")
     implementation("com.google.android.material:material:1.13.0")
     implementation("com.google.code.gson:gson:2.13.2")
+    
+    // TV Support
+    implementation("androidx.leanback:leanback:1.0.0")
+    implementation("androidx.leanback:leanback-preference:1.0.0")
+    implementation("androidx.tvprovider:tvprovider:1.0.0")
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
@@ -95,7 +101,6 @@ dependencies {
 
 tasks.register<Exec>("runNdkBuild") {
     group = "build"
-
     val ndkDir = android.ndkDirectory
     executable = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
         "$ndkDir\\ndk-build.cmd"
@@ -108,7 +113,6 @@ tasks.register<Exec>("runNdkBuild") {
         "APP_BUILD_SCRIPT=src/main/jni/Android.mk",
         "NDK_APPLICATION_MK=src/main/jni/Application.mk"
     ))
-
     println("Command: $commandLine")
 }
 
