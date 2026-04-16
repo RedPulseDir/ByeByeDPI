@@ -1,4 +1,4 @@
-name: Android Cal and Poop
+name: Android CI
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
 
       - name: Install NDK
         run: |
-          echo "y" | sdkmanager --install "ndk;26.1.10909125"
+          echo "y" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
 
       - name: Grant execute permission for gradlew
