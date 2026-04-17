@@ -75,9 +75,11 @@ class TvMainActivity : FragmentActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
-        // Request focus on toggle button by default
         binding.toggleButton.requestFocus()
-
+        
+        // Показываем Toast что это TV версия
+        Toast.makeText(this, "📺 TV Interface Loaded", Toast.LENGTH_LONG).show()
+        
         updateUI()
     }
 
