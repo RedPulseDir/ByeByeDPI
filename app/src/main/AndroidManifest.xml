@@ -9,16 +9,14 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    
-    <!-- TV Support -->
+
+    <!-- TV: тачскрин необязателен -->
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
+    <!-- TV: leanback поддержка -->
     <uses-feature
         android:name="android.software.leanback"
-        android:required="false" />
-    <uses-feature
-        android:name="android.hardware.type.television"
         android:required="false" />
 
     <application
@@ -33,23 +31,16 @@
         android:theme="@style/Theme.ByeDPI"
         tools:targetApi="31">
 
-        <!-- MainActivity - Phone UI -->
         <activity
             android:name=".activities.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.ByeDPI">
+            <!-- Обычный launcher для телефона -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <!-- TV MainActivity -->
-        <activity
-            android:name=".activities.TvMainActivity"
-            android:exported="true"
-            android:theme="@style/Theme.ByeDPI.Leanback"
-            android:screenOrientation="landscape">
+            <!-- TV launcher — тот же MainActivity -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
