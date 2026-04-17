@@ -8,6 +8,18 @@
     android:padding="48dp"
     android:background="@color/lb_background">
 
+    <!-- TV Badge -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="📺 TV MODE"
+        android:textSize="24sp"
+        android:textColor="#00FF00"
+        android:textStyle="bold"
+        android:background="#333333"
+        android:padding="8dp"
+        android:layout_marginBottom="16dp"/>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -68,5 +80,14 @@
         android:focusableInTouchMode="true"
         android:background="@drawable/tv_button_selector"
         android:textColor="@android:color/white"/>
+
+    <!-- Version info -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TV Edition • D-Pad Navigation"
+        android:textSize="16sp"
+        android:textColor="#666666"
+        android:layout_marginTop="32dp"/>
 
 </LinearLayout>
