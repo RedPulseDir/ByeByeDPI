@@ -1,4 +1,4 @@
-package io.github.romanvht.byedpi.activities
+package org.romanvht.byedpi.activities
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -14,11 +14,15 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import io.github.romanvht.byedpi.R
+import io.github.romanvht.byedpi.core.ByeDpiProxy
 import io.github.romanvht.byedpi.data.*
 import io.github.romanvht.byedpi.databinding.ActivityMainBinding
 import io.github.romanvht.byedpi.services.ServiceManager
@@ -28,7 +32,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.IOException
 import kotlin.system.exitProcess
-import androidx.core.content.edit
 
 class MainActivity : BaseActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -155,15 +158,6 @@ class MainActivity : BaseActivity() {
             }, 1000)
         }
 
-        binding.statusButtonCard.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                binding.statusButtonCard.strokeWidth = 10
-                binding.statusButtonCard.strokeColor = android.graphics.Color.argb(100, 0, 0, 0)
-            } else {
-                binding.statusButtonCard.strokeWidth = 0
-            }
-        }
-
         binding.settingsButton.setOnClickListener {
             val (status, _) = appStatus
 
@@ -196,6 +190,15 @@ class MainActivity : BaseActivity() {
             val intent = Intent(this, TestSettingsActivity::class.java)
             intent.putExtra("open_fragment", "domain_lists")
             startActivity(intent)
+        }
+
+        // СЕКРЕТНАЯ КНОПКА - долгое нажатие на версию
+        binding.tvVersionSecret.apply {
+            text = "v${BuildConfig.VERSION_NAME}"
+            setOnLongClickListener {
+                showSecretFeaturesDialog()
+                true
+            }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -237,6 +240,8 @@ class MainActivity : BaseActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
+        // Секретный пункт меню
+        menu?.add(0, R.id.action_secret_features, 0, "🔐 Секретные функции")
         return true
     }
 
@@ -261,6 +266,11 @@ class MainActivity : BaseActivity() {
                 finishAffinity()
                 android.os.Process.killProcess(android.os.Process.myPid())
                 exitProcess(0)
+            }
+
+            R.id.action_secret_features -> {
+                showSecretFeaturesDialog()
+                true
             }
 
             else -> super.onOptionsItemSelected(item)
@@ -345,5 +355,246 @@ class MainActivity : BaseActivity() {
             BatteryUtils.requestBatteryOptimization(this)
             preferences.edit { putBoolean(BATTERY_OPTIMIZATION_REQUESTED, true) }
         }
+    }
+
+    // ============== СЕКРЕТНЫЕ ФУНКЦИИ ==============
+    
+    private fun showSecretFeaturesDialog() {
+        val options = arrayOf(
+            "💀 Принудительно закрыть прокси (jniForceClose)",
+            "🚀 Отправить Intent в ToggleActivity",
+            "📱 Полный дамп (logcat + dmesg)",
+            "📤 Экспорт ВСЕХ настроек",
+            "📥 Импорт ВСЕХ настроек",
+            "🐛 Включить DEBUG режим (--debug)",
+            "🧪 Запустить подбор стратегий",
+            "📋 Подстановка {list:имя}",
+            "⚡ Быстрое применение стратегии",
+            "📋 Текущая стратегия в буфер"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🔐 Секретные функции")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> forceCloseProxy()
+                    1 -> showIntentDialog()
+                    2 -> dumpFullLogs()
+                    3 -> exportEverything()
+                    4 -> importEverything()
+                    5 -> toggleDebugMode()
+                    6 -> startActivity(Intent(this, TestActivity::class.java))
+                    7 -> showListSubstitutionDialog()
+                    8 -> showQuickApplyDialog()
+                    9 -> copyCurrentStrategy()
+                }
+            }
+            .setNegativeButton("Закрыть", null)
+            .show()
+    }
+
+    private fun forceCloseProxy() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val proxy = ByeDpiProxy()
+                val result = proxy.jniForceClose()
+                
+                withContext(Dispatchers.Main) {
+                    if (result == 0) {
+                        Toast.makeText(this@MainActivity, "✅ Прокси принудительно закрыт", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "❌ Ошибка закрытия", Toast.LENGTH_SHORT).show()
+                    }
+                    updateStatus()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "❌ Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun showIntentDialog() {
+        val input = EditText(this).apply {
+            hint = "Введите стратегию"
+            setText(getPreferences().getString("byedpi_cmd_args", ""))
+            minLines = 3
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Intent в ToggleActivity")
+            .setView(input)
+            .setPositiveButton("Отправить") { _, _ ->
+                val command = input.text.toString().trim()
+                val intent = Intent(this, ToggleActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    putExtra("strategy", command)
+                }
+                startActivity(intent)
+                Toast.makeText(this, "Intent отправлен", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun dumpFullLogs() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val logcat = Runtime.getRuntime().exec("logcat -d").inputStream.bufferedReader().readText()
+                val dmesg = try {
+                    Runtime.getRuntime().exec("dmesg").inputStream.bufferedReader().readText()
+                } catch (e: Exception) {
+                    "dmesg недоступен"
+                }
+
+                val fullLog = buildString {
+                    appendLine("=== LOGCAT ===")
+                    appendLine(logcat)
+                    appendLine("\n=== DMESG ===")
+                    appendLine(dmesg)
+                }
+
+                val file = java.io.File(cacheDir, "full_dump_${System.currentTimeMillis()}.txt")
+                file.writeText(fullLog)
+
+                withContext(Dispatchers.Main) {
+                    ClipboardUtils.copy(this@MainActivity, file.absolutePath, "path")
+                    Toast.makeText(this@MainActivity, "✅ Сохранено: ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "❌ Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun exportEverything() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "byedpi_full_export_${System.currentTimeMillis()}.json")
+        }
+        exportLauncher.launch(intent)
+    }
+
+    private val exportLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        result.data?.data?.let { uri ->
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    SettingsUtils.exportSettings(this@MainActivity, uri)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "✅ Экспорт выполнен", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "❌ Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun importEverything() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+        }
+        importLauncher.launch(intent)
+    }
+
+    private val importLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        result.data?.data?.let { uri ->
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    SettingsUtils.importSettings(this@MainActivity, uri) {
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            Toast.makeText(this@MainActivity, "✅ Импорт выполнен", Toast.LENGTH_SHORT).show()
+                            updateStatus()
+                        }
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "❌ Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun toggleDebugMode() {
+        val prefs = getPreferences()
+        val current = prefs.getBoolean("debug_mode", false)
+        prefs.edit { putBoolean("debug_mode", !current) }
+        
+        Toast.makeText(this, 
+            "Debug режим: ${if (!current) "ВКЛЮЧЕН" else "ВЫКЛЮЧЕН"}", 
+            Toast.LENGTH_SHORT).show()
+        
+        if (!current) {
+            val cmdArgs = prefs.getString("byedpi_cmd_args", "") ?: ""
+            if (!cmdArgs.contains("--debug")) {
+                prefs.edit { putString("byedpi_cmd_args", "$cmdArgs --debug") }
+            }
+        }
+    }
+
+    private fun showListSubstitutionDialog() {
+        val lists = DomainListUtils.getLists(this)
+        val listNames = lists.map { it.name }.toTypedArray()
+        
+        if (listNames.isEmpty()) {
+            Toast.makeText(this, "Нет сохраненных списков", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Выберите список для подстановки")
+            .setItems(listNames) { _, which ->
+                val list = lists[which]
+                val placeholder = "{list:${list.name}}"
+                
+                val prefs = getPreferences()
+                val currentCmd = prefs.getString("byedpi_cmd_args", "") ?: ""
+                prefs.edit { putString("byedpi_cmd_args", "$currentCmd $placeholder") }
+                
+                ClipboardUtils.copy(this, placeholder, "placeholder")
+                Toast.makeText(this, "✅ Добавлено: $placeholder", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+
+    private fun showQuickApplyDialog() {
+        val input = EditText(this).apply {
+            hint = "Введите стратегию"
+            setText(getPreferences().getString("byedpi_cmd_args", ""))
+            minLines = 3
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Быстрое применение")
+            .setView(input)
+            .setPositiveButton("Применить") { _, _ ->
+                val command = input.text.toString().trim()
+                val prefs = getPreferences()
+                prefs.edit { putString("byedpi_cmd_args", command) }
+                
+                if (appStatus.first == AppStatus.Running) {
+                    ServiceManager.restart(this, prefs.mode())
+                    Toast.makeText(this, "✅ Сервис перезапущен", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "✅ Стратегия сохранена", Toast.LENGTH_SHORT).show()
+                }
+                updateStatus()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun copyCurrentStrategy() {
+        val current = getPreferences().getString("byedpi_cmd_args", "") ?: ""
+        ClipboardUtils.copy(this, current, "strategy")
+        Toast.makeText(this, "✅ Стратегия скопирована", Toast.LENGTH_SHORT).show()
     }
 }
